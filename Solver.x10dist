@@ -36,9 +36,7 @@ public class Solver
     public def solve(webGraph: Rail[WebNode], dampingFactor: Double, epsilon:Double) : Rail[Double] {
         
         val n: double = webGraph.size;
-    	 
-        var extra: long = 0;
-        
+    	  
         val sparseMatrix = graphToMatrix(webGraph);
         val solutions:Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>1.0/webGraph.size);
        
@@ -126,21 +124,7 @@ public class Solver
             
             if (dist < epsilon) {
                 Console.OUT.println("Distance: "+dist + " < " +epsilon);
-                Console.OUT.println("EXTRA ITERATION: "+extra);                
-                extra++;
-
-                if (extra >= 100) {
-
-
-                    Console.OUT.println("Printing vector: \n\n");
-                    for (val i in gSolution().range()) {
-                        Console.OUT.println(gSolution()(i));
-                    }
-                    Console.OUT.println("\n\n--------\n\n");
-
-                
-                    break;
-                }
+                break;
             }
             
             Console.OUT.println("Distance: "+dist+" > "+epsilon+"\n");
@@ -150,27 +134,33 @@ public class Solver
         return gSolutionVar();
     }
     
+    
 
     public def graphToMatrix(webGraph: Rail[WebNode]) : Rail[HashMap[Long, NodeProb]] {
   
         var sparseMatrix: Rail[HashMap[Long, NodeProb]] = new  Rail[HashMap[Long, NodeProb]](webGraph.size, (i:long)=> new HashMap[Long, NodeProb]());
         val totalLinks:double = webGraph.size;
 
+    
         Console.OUT.println("Graph size");
         Console.OUT.println(webGraph.size);
         for (wn in webGraph) {
             numLinks: double = wn.links.size();
+            //sparseMatrix(wn.id-1n) = new HashMap[Long, NodeProb]();
       
             if (numLinks >0) {
                 for (lwn in wn.links) {
                     val prob: double = 1.0 / numLinks;        
                     sparseMatrix(lwn.id-1).put(wn.id-1, new NodeProb(wn.id-1, prob));        
+        
                 }
                 
             } else {
                 for (i in webGraph.range()) {
                     val prob: double = 1.0 / totalLinks;        
                     sparseMatrix(i).put(wn.id-1, new NodeProb(wn.id-1, prob));        
+                    
+
                 }
 
             }
@@ -233,10 +223,11 @@ public class Solver
 
     public def distance(v1:Rail[Double], v2:Rail[Double]) : double {
 
-        var sum: double = 0.0;
+        var sum: double = 0;
 
         for (i in v1.range()) {
             sum += Math.pow(v1(i) - v2(i), 2);  
+
         }
 
         return Math.sqrt(sum);

@@ -12,12 +12,11 @@ public class Solver
 {
     
     public def makeFragment(size:long): Rail[HashMap[Long, NodeProb]] {
-      return new Rail[HashMap[Long, NodeProb]](size, (i:long)=> new HashMap[Long, NodeProb]());
+        return new Rail[HashMap[Long, NodeProb]](size, (i:long)=> new HashMap[Long, NodeProb]());
     }
 
     public def makeSolutionFragment(size:long) : Rail[Double] {
         return new Rail[Double](size, (i:long) => 0.0);
-
     }
 
     public def makeIndexMap(offset:long, numItems:long):HashMap[Long, Long] {
@@ -38,7 +37,7 @@ public class Solver
         
         val n: double = webGraph.size;
     	  
-    	  val sparseMatrix = graphToMatrix(webGraph);
+        val sparseMatrix = graphToMatrix(webGraph);
         val solutions:Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>1.0/webGraph.size);
        
         Console.OUT.println("Matrix size: "+n+"x"+n);
@@ -62,16 +61,11 @@ public class Solver
                     PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
                         () => solutions);
         
-        val gSolutionFragment =
-                    PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
-                        () => (place1.id == here.id) ? makeSolutionFragment(size1) : makeSolutionFragment(size2));
 
         var gNewSolutionVar:PlaceLocalHandle[Rail[Double]] = 
                     PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
                         () => new Rail[Double](webGraph.size, (i:long) => 0.0));
-      
-
-        
+     
 
         for (i in sparseMatrix.range()) {
             val row = sparseMatrix(i);
@@ -82,20 +76,11 @@ public class Solver
             }
         }
 
-        for (val p in PlaceGroup.WORLD) {
-            at (p) {
-                Console.OUT.println("Place: " + p +" has "+ matrixFragments().size+" elements");
-                prettyFragmentPrint(matrixFragments(), webGraph.size);
-                Console.OUT.println();
-            }
-        }
-          
-
-        cutoff: long = webGraph.size / 2;
 
         while(true) {
             val gSolution = gSolutionVar;
             val gNewSolution = gNewSolutionVar;
+
 
             finish {
                 for (val p in PlaceGroup.WORLD) {
@@ -103,7 +88,6 @@ public class Solver
                         async{
                             val fragSize = matrixFragments().size; 
                             for (var i:long = 0; i < fragSize; i++) {
-                                //gSolutionFragment()(i) = 0.0;
                                 var rowUpdate:double = 0.0;
 
                                 for (val j in gSolution().range()) {
@@ -112,8 +96,7 @@ public class Solver
                                         sum += dampingFactor * matrixFragments()(i).get(j).value.prob;
                                     }
 
-                                    //gSolutionFragment()(i) += (gSolution()(j) * sum);
-                                    rowUpdate += (gSolution()(j) * sum);
+                                    rowUpdate += (gSolution()(j) * sum) / 1.0;
                                 }
                                 
                                 val gIndex = indexMap().get(i).value;
@@ -121,7 +104,6 @@ public class Solver
                                 at (place1) gNewSolution()(gIndex) = gRowUpdate;
                                 at (place2) gNewSolution()(gIndex) = gRowUpdate;
 
-                                Console.OUT.println(p+" Working on row "+indexMap().get(i).value);
                             }
                             
                         }
@@ -130,66 +112,25 @@ public class Solver
                 }
             }
   
-            for (val p in PlaceGroup.WORLD) {
-                at (p) {
-                    var norm:double = 0.0;
-                    for (val i in gNewSolution().range()) {
-                        norm += gNewSolution()(i);          
-                    } 
-                    for (val i in gNewSolution().range()) {
-                        gNewSolution()(i) = gNewSolution()(i) / norm;          
-                    } 
-                                       
-                    
-                    
-                }
-            }
+
+            
 
             val swap = gSolutionVar;
             gSolutionVar = gNewSolutionVar;
             gNewSolutionVar = swap;
             
             
-            
-            if (distance(gSolution(), gNewSolution()) < epsilon) {
+            val dist = distance(gSolution(), gNewSolution());
+            if (dist < epsilon) {
                 
                 break;
             }
             
-            for (val p in PlaceGroup.WORLD) {
-                at (p) {    
-                            Console.OUT.println("New Solution vctr: "+gNewSolution());
-                            Console.OUT.println("Solution vctr: "+gSolution());
+            Console.OUT.println("Distance: "+dist);
+            Console.OUT.println("Old Solution vctr: "+gSolution());
+            Console.OUT.println("New Solution vctr: "+gNewSolution());
                     
-                }
-            }
         }    
-            /*
-            }
-            var newSolution: Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>0.0);
-            var norm: double = 0.0;
-            
-            //Console.OUT.println("Update: "+solutions);
-          
-            for (i in newSolution.range()) {
-              newSolution(i) = newSolution(i) / norm;
-            }
-         
-          //Console.OUT.println("Eps: "+epsilon);
-          //Console.OUT.println("Distance: "+distance(solutions, newSolution));
-          
-          if (distance(solutions, newSolution) <= epsilon) {
-            break;
-
-          }
-
-          //Console.OUT.println("New solution: "+newSolution);
-          //Console.OUT.println("Old solution: "+solutions);
-          //Console.OUT.println();
-          solutions = newSolution;
-          
-        //}
-      */
 
         return gSolutionVar();
     }
@@ -228,9 +169,9 @@ public class Solver
         }
     
     
-    return sparseMatrix;
+        return sparseMatrix;
 
-  }
+    }
 
 
     public def prettyFragmentPrint(sparseMatrix: Rail[HashMap[Long, NodeProb]], n:long) {

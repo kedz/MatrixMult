@@ -10,6 +10,11 @@ import x10.util.HashMap;
  */
 public class Solver
 {
+    
+    public def makeFragment(size:long): Rail[HashMap[Long, NodeProb]] {
+      return new Rail[HashMap[Long, NodeProb]](size, (i:long)=> new HashMap[Long, NodeProb]());
+    }
+    
     /**
 	   * solve(webGraph: Rail[WebNode], dampingFactor: double,epsilon:Double)
 	   * 
@@ -25,24 +30,19 @@ public class Solver
         Console.OUT.println("Matrix size: "+n+"x"+n);
         Console.OUT.println("DampingFactor: "+dampingFactor);
 
-        size1 : long = webGraph.size / 2;
-        size2 : long = webGraph.size - size1;
+        val size1 : long = webGraph.size / 2;
+        val size2 : long = webGraph.size - size1;
         
         val place1 = PlaceGroup.WORLD(0);
         val place2 = PlaceGroup.WORLD(1);
        
         val matrixFragments = 
-                    PlaceLocalHandle.make[Rail[HashMap[Long, NodeProb]]](PlaceGroup.WORLD, () => null);
+                    PlaceLocalHandle.make[Rail[HashMap[Long, NodeProb]]](PlaceGroup.WORLD,
+                        () =>(place1.id == here.id) ? makeFragment(size1) : makeFragment(size2));
        
         
-        //for (p in PlaceGroup.WORLD) {
-        //    at (p) {
-        //        val matrixFragment: Rail[HashMap[Long, NodeProb]] = null;
-            
-        //    }
-       // }
 
-
+        /*
         at (place1) {
             matrixFragments() = new Rail[HashMap[Long, NodeProb]](size1, (i:long)=> new HashMap[Long, NodeProb]());
         }
@@ -50,7 +50,8 @@ public class Solver
         at (place2) {
             matrixFragments() = new Rail[HashMap[Long, NodeProb]](size2, (i:long)=> new HashMap[Long, NodeProb]());
         }
-
+    
+        */
         
         for (i in sparseMatrix.range()) {
             val row = sparseMatrix(i);
@@ -62,7 +63,11 @@ public class Solver
         }
 
         for (val p in PlaceGroup.WORLD) {
-            at (p) prettyPrint(matrixFragments());
+            at (p) {
+                Console.OUT.println("Place: " + p +" has "+ matrixFragments().size+" elements");
+                prettyFragmentPrint(matrixFragments(), webGraph.size);
+                Console.OUT.println();
+            }
         }
           
 
@@ -121,8 +126,9 @@ public class Solver
 
 
         return solutions;
-    	}
-
+    }
+    
+    
 
     public def graphToMatrix(webGraph: Rail[WebNode]) : Rail[HashMap[Long, NodeProb]] {
   
@@ -161,48 +167,65 @@ public class Solver
   }
 
 
+    public def prettyFragmentPrint(sparseMatrix: Rail[HashMap[Long, NodeProb]], n:long) {
 
-
-  public def prettyPrint(sparseMatrix: Rail[HashMap[Long, NodeProb]]) {
-
-    for (val i in sparseMatrix.range()) {
+        for (val i in sparseMatrix.range()) {
     
-      for (val j in sparseMatrix.range()) {
-        if (sparseMatrix(i).containsKey(j)) {
-          val prob: double = sparseMatrix(i).get(j).value.prob;
-        } else 
-          Console.OUT.print("0.000 ");
+            for (val j in new LongRange(0,n-1)) {
+                if (sparseMatrix(i).containsKey(j)) {
+                    val prob: double = sparseMatrix(i).get(j).value.prob;
+                    Console.OUT.print(String.format("%0.3f ", new Rail[Any](1, (c:long) => prob))); 
+                
+                } else 
+                    Console.OUT.print("0.000 ");
     
-      }
-      Console.OUT.println();
+            }
+            Console.OUT.println();
+
+        }
+    }
+
+
+    public def prettyPrint(sparseMatrix: Rail[HashMap[Long, NodeProb]]) {
+
+        for (val i in sparseMatrix.range()) {
+    
+            for (val j in sparseMatrix.range()) {
+                if (sparseMatrix(i).containsKey(j)) {
+                    val prob: double = sparseMatrix(i).get(j).value.prob;
+            } else 
+                Console.OUT.print("0.000 ");
+    
+            }
+            Console.OUT.println();
+
+        }
+
 
     }
 
 
-  }
-
-
-  public class NodeProb {
-    val id: long;
-    val prob: double;
-    def this(id: long, prob: double) {
-      this.id = id;
-      this.prob = prob;
-    }
-
-  }
-
-  public def distance(v1:Rail[Double], v2:Rail[Double]) : double {
-
-    var sum: double = 0;
-
-    for (i in v1.range()) {
-      sum += Math.pow(v1(i) - v2(i), 2);  
+    public class NodeProb {
+        val id: long;
+        val prob: double;
+        def this(id: long, prob: double) {
+            this.id = id;
+            this.prob = prob;
+        }
 
     }
 
-    return Math.sqrt(sum);
+    public def distance(v1:Rail[Double], v2:Rail[Double]) : double {
 
-  }
+        var sum: double = 0;
+
+        for (i in v1.range()) {
+            sum += Math.pow(v1(i) - v2(i), 2);  
+
+        }
+
+        return Math.sqrt(sum);
+
+    }
 
 }

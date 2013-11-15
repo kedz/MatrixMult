@@ -14,6 +14,20 @@ public class Solver
     public def makeFragment(size:long): Rail[HashMap[Long, NodeProb]] {
       return new Rail[HashMap[Long, NodeProb]](size, (i:long)=> new HashMap[Long, NodeProb]());
     }
+
+    public def makeSolutionFragment(size:long) : Rail[Double] {
+        return new Rail[Double](size, (i:long) => 0.0);
+
+    }
+
+    public def makeIndexMap(offset:long, numItems:long):HashMap[Long, Long] {
+        val map:HashMap[Long, Long] = new HashMap[Long, Long]();
+        for (var i:long = 0; i < numItems; i++) {
+            map.put(i, offset+i);
+
+        }
+        return map;
+    }
     
     /**
 	   * solve(webGraph: Rail[WebNode], dampingFactor: double,epsilon:Double)
@@ -25,7 +39,7 @@ public class Solver
         val n: double = webGraph.size;
     	  
     	  val sparseMatrix = graphToMatrix(webGraph);
-        var solutions:Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>1.0/webGraph.size);
+        val solutions:Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>1.0/webGraph.size);
        
         Console.OUT.println("Matrix size: "+n+"x"+n);
         Console.OUT.println("DampingFactor: "+dampingFactor);
@@ -36,23 +50,29 @@ public class Solver
         val place1 = PlaceGroup.WORLD(0);
         val place2 = PlaceGroup.WORLD(1);
        
+        val indexMap = 
+                    PlaceLocalHandle.make[HashMap[Long, Long]](PlaceGroup.WORLD,
+                        () =>(place1.id == here.id) ? makeIndexMap(0,size1) : makeIndexMap(size1, size2));
+
         val matrixFragments = 
                     PlaceLocalHandle.make[Rail[HashMap[Long, NodeProb]]](PlaceGroup.WORLD,
                         () =>(place1.id == here.id) ? makeFragment(size1) : makeFragment(size2));
-       
+
+        var gSolutionVar:PlaceLocalHandle[Rail[Double]] = 
+                    PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
+                        () => solutions);
+        
+        val gSolutionFragment =
+                    PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
+                        () => (place1.id == here.id) ? makeSolutionFragment(size1) : makeSolutionFragment(size2));
+
+        var gNewSolutionVar:PlaceLocalHandle[Rail[Double]] = 
+                    PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
+                        () => new Rail[Double](webGraph.size, (i:long) => 0.0));
+      
+
         
 
-        /*
-        at (place1) {
-            matrixFragments() = new Rail[HashMap[Long, NodeProb]](size1, (i:long)=> new HashMap[Long, NodeProb]());
-        }
-
-        at (place2) {
-            matrixFragments() = new Rail[HashMap[Long, NodeProb]](size2, (i:long)=> new HashMap[Long, NodeProb]());
-        }
-    
-        */
-        
         for (i in sparseMatrix.range()) {
             val row = sparseMatrix(i);
             if (i < size1) {
@@ -73,35 +93,82 @@ public class Solver
 
         cutoff: long = webGraph.size / 2;
 
-        //for (i in sparseMatrix.ranges()) {
-
-          //if (i < cutoff)
-
-
-        //}
-
-
-        /*
         while(true) {
+            val gSolution = gSolutionVar;
+            val gNewSolution = gNewSolutionVar;
 
+            finish {
+                for (val p in PlaceGroup.WORLD) {
+                    at (p) {
+                        async{
+                            val fragSize = matrixFragments().size; 
+                            for (var i:long = 0; i < fragSize; i++) {
+                                //gSolutionFragment()(i) = 0.0;
+                                var rowUpdate:double = 0.0;
+
+                                for (val j in gSolution().range()) {
+                                    var sum: double = (1-dampingFactor) / n;
+                                    if (matrixFragments()(i).containsKey(j)) {
+                                        sum += dampingFactor * matrixFragments()(i).get(j).value.prob;
+                                    }
+
+                                    //gSolutionFragment()(i) += (gSolution()(j) * sum);
+                                    rowUpdate += (gSolution()(j) * sum);
+                                }
+                                
+                                val gIndex = indexMap().get(i).value;
+                                val gRowUpdate = rowUpdate;
+                                at (place1) gNewSolution()(gIndex) = gRowUpdate;
+                                at (place2) gNewSolution()(gIndex) = gRowUpdate;
+
+                                Console.OUT.println(p+" Working on row "+indexMap().get(i).value);
+                            }
+                            
+                        }
+                    }
+                
+                }
+            }
+  
+            for (val p in PlaceGroup.WORLD) {
+                at (p) {
+                    var norm:double = 0.0;
+                    for (val i in gNewSolution().range()) {
+                        norm += gNewSolution()(i);          
+                    } 
+                    for (val i in gNewSolution().range()) {
+                        gNewSolution()(i) = gNewSolution()(i) / norm;          
+                    } 
+                                       
+                    
+                    
+                }
+            }
+
+            val swap = gSolutionVar;
+            gSolutionVar = gNewSolutionVar;
+            gNewSolutionVar = swap;
+            
+            
+            
+            if (distance(gSolution(), gNewSolution()) < epsilon) {
+                
+                break;
+            }
+            
+            for (val p in PlaceGroup.WORLD) {
+                at (p) {    
+                            Console.OUT.println("New Solution vctr: "+gNewSolution());
+                            Console.OUT.println("Solution vctr: "+gSolution());
+                    
+                }
+            }
+        }    
+            /*
+            }
             var newSolution: Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>0.0);
             var norm: double = 0.0;
-
-            for (val i in solutions.range()) { 
-                for (val j in solutions.range()) {
-              
-                    var sum: double = (1-dampingFactor) / n;
-                    if (sparseMatrix(i).containsKey(j)) {
-                        sum += dampingFactor * sparseMatrix(i).get(j).value.prob;
-                    }
-                    //Console.OUT.print(sum+" "); 
-
-                    newSolution(i) += (solutions(j) * sum);
-                }
-          
-                norm += newSolution(i);
-            //Console.OUT.println("| [ "+solutions(i) + " ]");
-            }
+            
             //Console.OUT.println("Update: "+solutions);
           
             for (i in newSolution.range()) {
@@ -121,11 +188,10 @@ public class Solver
           //Console.OUT.println();
           solutions = newSolution;
           
-        }
-*/
+        //}
+      */
 
-
-        return solutions;
+        return gSolutionVar();
     }
     
     

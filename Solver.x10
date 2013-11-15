@@ -24,8 +24,8 @@ public class Solver
        
         Console.OUT.println("Matrix size: "+n+"x"+n);
         Console.OUT.println("DampingFactor: "+dampingFactor);
-        Console.OUT.println("u = "+solutions);
-        
+       
+        Console.OUT.println("The matrix:"); 
         prettyPrint(sparseMatrix);
         Console.OUT.println();
 
@@ -41,12 +41,12 @@ public class Solver
                     if (sparseMatrix(j).containsKey(i)) {
                         sum += dampingFactor * sparseMatrix(j).get(i).value.prob;
                     }
-                    Console.OUT.print(sum+" "); 
+                    //Console.OUT.print(sum+" "); 
 
                     newSolution(i) += (solutions(j) * sum);
                 }
           
-            Console.OUT.println("| [ "+solutions(i) + " ]");
+            //Console.OUT.println("| [ "+solutions(i) + " ]");
             }
             //Console.OUT.println("Update: "+solutions);
           
@@ -58,17 +58,17 @@ public class Solver
               newSolution(i) = newSolution(i) / norm;
             }
          
-          Console.OUT.println("Eps: "+epsilon);
-          Console.OUT.println("Distance: "+distance(solutions, newSolution));
+          //Console.OUT.println("Eps: "+epsilon);
+          //Console.OUT.println("Distance: "+distance(solutions, newSolution));
           
           if (distance(solutions, newSolution) <= epsilon) {
             break;
 
           }
 
-          Console.OUT.println("New solution: "+newSolution);
-          Console.OUT.println("Old solution: "+solutions);
-          Console.OUT.println();
+          //Console.OUT.println("New solution: "+newSolution);
+          //Console.OUT.println("Old solution: "+solutions);
+          //Console.OUT.println();
           solutions = newSolution;
           
           

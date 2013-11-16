@@ -18,51 +18,75 @@ public class Solver
     public def solve(webGraph: Rail[WebNode], dampingFactor: Double, epsilon:Double) : Rail[Double] {
         
         val n: double = webGraph.size;
-    	  
+    	  var extra:long = 0;
+        
     	  val sparseMatrix = graphToMatrix(webGraph);
         var solutions:Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>1.0/webGraph.size);
+        //Console.OUT.println(solutions);
+        //prettyPrint(sparseMatrix); 
        
         Console.OUT.println("Matrix size: "+n+"x"+n);
         Console.OUT.println("DampingFactor: "+dampingFactor);
 
+       
+        var count:long = 0; 
+        var newSolution: Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>0.0);
+        
         while(true) {
-
-            var newSolution: Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>0.0);
-            var norm: double = 0.0;
+            Console.OUT.println(count);
+            count++;
+          
 
             for (val i in solutions.range()) { 
+                
+                newSolution(i) = 0.0;
+                var update:double = 0.0;
+
                 for (val j in solutions.range()) {
               
                     var sum: double = (1-dampingFactor) / n;
                     if (sparseMatrix(i).containsKey(j)) {
                         sum += dampingFactor * sparseMatrix(i).get(j).value.prob;
                     }
-                    //Console.OUT.print(sum+" "); 
 
-                    newSolution(i) += (solutions(j) * sum);
+                    update += (solutions(j) * sum);
                 }
-          
-                norm += newSolution(i);
+                newSolution(i) = update;
+            
+            
             //Console.OUT.println("| [ "+solutions(i) + " ]");
             }
             //Console.OUT.println("Update: "+solutions);
-          
-            for (i in newSolution.range()) {
-              newSolution(i) = newSolution(i) / norm;
-            }
          
           //Console.OUT.println("Eps: "+epsilon);
           //Console.OUT.println("Distance: "+distance(solutions, newSolution));
+          //Console.OUT.println("Old Solution vctr: "+solution;
+          //Console.OUT.println("New Solution vctr: "+gNewSolution());
+         
+          val dist = distance(solutions, newSolution);
+          val swap = solutions;
+          solutions = newSolution;
+          newSolution = swap;
+          if (dist < epsilon) {
           
-          if (distance(solutions, newSolution) <= epsilon) {
-            break;
+              Console.OUT.println("Distance: "+dist + " < " +epsilon);
+              Console.OUT.println("EXTRA ITERATION: "+extra);                
+              extra++;
+              if (extra >= 100) {
+      
+                  break;
 
+              }
+
+
+
+          } else {
+
+              Console.OUT.println("Distance: "+dist + " > " +epsilon);
           }
-
           //Console.OUT.println("New solution: "+newSolution);
           //Console.OUT.println("Old solution: "+solutions);
           //Console.OUT.println();
-          solutions = newSolution;
           
           
 
@@ -122,6 +146,7 @@ public class Solver
       for (val j in sparseMatrix.range()) {
         if (sparseMatrix(i).containsKey(j)) {
           val prob: double = sparseMatrix(i).get(j).value.prob;
+          Console.OUT.print(String.format("%0.3f ", new Rail[Any](1, (i:long)=>prob)));
         } else 
           Console.OUT.print("0.000 ");
     

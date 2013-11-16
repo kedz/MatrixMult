@@ -1,6 +1,7 @@
 import x10.util.Timer;
 import x10.util.ArrayList;
 import x10.util.HashMap;
+import x10.util.concurrent.AtomicLong;
 
 /**
  * This is the class that provides the solve() method.
@@ -38,6 +39,7 @@ public class Solver
         val n: double = webGraph.size;
     	 
         var extra: long = 0;
+		val	nthreads = 4;
         
         val sparseMatrix = graphToMatrix(webGraph);
         val solutions:Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>1.0/webGraph.size);
@@ -88,26 +90,35 @@ public class Solver
             finish {
                 for (val p in PlaceGroup.WORLD) {
                     at (p) {
+					
                         async{
-                            val fragSize = matrixFragments().size; 
-                            for (var i:long = 0; i < fragSize; i++) {
-                                var rowUpdate:double = 0.0;
+							val fragSize = matrixFragments().size;
+							val chunkSize = fragSize/nthreads+1;
+							
+							finish for( var k:long = 0; k < fragSize ; k+= chunkSize){
+								val start = k;
+								val end = (start + chunkSize) > fragSize ? fragSize : (start + chunkSize); 
+							
+								async{	  
+									for (var i:long = start; i <  end ; i++) {
+										var rowUpdate:double = 0.0;
+											
+										for (val j in gSolution().range()) {
+											var sum: double = (1-dampingFactor) / n;
+											if (matrixFragments()(i).containsKey(j)) {
+												sum += dampingFactor * matrixFragments()(i).get(j).value.prob;
+											}
 
-                                for (val j in gSolution().range()) {
-                                    var sum: double = (1-dampingFactor) / n;
-                                    if (matrixFragments()(i).containsKey(j)) {
-                                        sum += dampingFactor * matrixFragments()(i).get(j).value.prob;
-                                    }
-
-                                    rowUpdate += (gSolution()(j) * sum);
-                                }
-                                
-                                val gIndex = indexMap().get(i).value;
-                                val gRowUpdate = rowUpdate / 1.0;
-                                at (place1) gNewSolution()(gIndex) = gRowUpdate;
-                                at (place2) gNewSolution()(gIndex) = gRowUpdate;
-
-                            }
+											rowUpdate += (gSolution()(j) * sum);
+										}
+										val gIndex = indexMap().get(i).value;
+										val gRowUpdate = rowUpdate / 1.0;
+										at (place1) gNewSolution()(gIndex) = gRowUpdate;
+										at (place2) gNewSolution()(gIndex) = gRowUpdate;				
+									
+									}
+								}
+							}
                             
                         }
                     }
@@ -121,29 +132,29 @@ public class Solver
             gNewSolutionVar = swap;
             
             val dist = distance(gSolution(), gNewSolution());
-            Console.OUT.println("Old Solution vctr: "+gSolution());
-            Console.OUT.println("New Solution vctr: "+gNewSolution());
+            //Console.OUT.println("Old Solution vctr: "+gSolution());
+            //Console.OUT.println("New Solution vctr: "+gNewSolution());
             
             if (dist < epsilon) {
-                Console.OUT.println("Distance: "+dist + " < " +epsilon);
-                Console.OUT.println("EXTRA ITERATION: "+extra);                
+                //Console.OUT.println("Distance: "+dist + " < " +epsilon);
+                //Console.OUT.println("EXTRA ITERATION: "+extra);                
                 extra++;
 
                 if (extra >= 100) {
 
 
-                    Console.OUT.println("Printing vector: \n\n");
-                    for (val i in gSolution().range()) {
-                        Console.OUT.println(gSolution()(i));
-                    }
-                    Console.OUT.println("\n\n--------\n\n");
+                    //Console.OUT.println("Printing vector: \n\n");
+                    //for (val i in gSolution().range()) {
+                        //Console.OUT.println(gSolution()(i));
+                    //}
+                    //Console.OUT.println("\n\n--------\n\n");
 
                 
                     break;
                 }
             }
             
-            Console.OUT.println("Distance: "+dist+" > "+epsilon+"\n");
+            //Console.OUT.println("Distance: "+dist+" > "+epsilon+"\n");
                     
         }    
 

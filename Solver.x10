@@ -80,29 +80,34 @@ public class Solver
             }
         }
 
+		var iter:long = 0;
 
         while(true) {
             val gSolution = gSolutionVar;
             val gNewSolution = gNewSolutionVar;
-
-            
+			val iterV = iter;
 
             finish {
                 for (val p in PlaceGroup.WORLD) {
                     at (p) {
-					
+					 
                         async{
 							val fragSize = matrixFragments().size;
 							val chunkSize = fragSize/nthreads+1;
-							
+											
 							finish for( var k:long = 0; k < fragSize ; k+= chunkSize){
 								val start = k;
 								val end = (start + chunkSize) > fragSize ? fragSize : (start + chunkSize); 
 							
-								async{	  
+								async{
+								
+									var blkUpdate:Rail[double] = new Rail[double]( chunkSize );
+									val otherPlace = (here.id == place1.id()) ? place2 : place1;
+									val oldPlace = here.id;
+									
 									for (var i:long = start; i <  end ; i++) {
 										var rowUpdate:double = 0.0;
-											
+										
 										for (val j in gSolution().range()) {
 											var sum: double = (1-dampingFactor) / n;
 											if (matrixFragments()(i).containsKey(j)) {
@@ -113,10 +118,22 @@ public class Solver
 										}
 										val gIndex = indexMap().get(i).value;
 										val gRowUpdate = rowUpdate / 1.0;
-										at (place1) gNewSolution()(gIndex) = gRowUpdate;
-										at (place2) gNewSolution()(gIndex) = gRowUpdate;				
+										blkUpdate( i%chunkSize ) = rowUpdate/1.0;
+										gNewSolution()(gIndex) = gRowUpdate;
+										
+										at (here) gNewSolution()(gIndex) = gRowUpdate;
 									
 									}
+									
+									val XferBlk = blkUpdate;
+									val gstart = indexMap().get(start).value;
+									val gend = indexMap().get(end-1).value;
+									
+									at ( otherPlace )
+										for( var i:long = gstart ; i <= gend ; i++ ){
+											gNewSolution()( i ) = XferBlk(i-gstart);
+										}
+									
 								}
 							}
                             
@@ -132,29 +149,30 @@ public class Solver
             gNewSolutionVar = swap;
             
             val dist = distance(gSolution(), gNewSolution());
-            //Console.OUT.println("Old Solution vctr: "+gSolution());
-            //Console.OUT.println("New Solution vctr: "+gNewSolution());
+            Console.OUT.println("Old Solution vctr: "+gSolution());
+			Console.OUT.println("New Solution vctr: "+gNewSolution());
             
             if (dist < epsilon) {
-                //Console.OUT.println("Distance: "+dist + " < " +epsilon);
-                //Console.OUT.println("EXTRA ITERATION: "+extra);                
+                Console.OUT.println("Distance: "+dist + " < " +epsilon);
+                Console.OUT.println("EXTRA ITERATION: "+extra);                
                 extra++;
 
                 if (extra >= 100) {
 
 
-                    //Console.OUT.println("Printing vector: \n\n");
-                    //for (val i in gSolution().range()) {
-                        //Console.OUT.println(gSolution()(i));
-                    //}
-                    //Console.OUT.println("\n\n--------\n\n");
+                    Console.OUT.println("Printing vector: \n\n");
+                    for (val i in gSolution().range()) {
+                        Console.OUT.println(gSolution()(i));
+                    }
+                    Console.OUT.println("\n\n--------\n\n");
 
-                
+					
                     break;
                 }
             }
             
-            //Console.OUT.println("Distance: "+dist+" > "+epsilon+"\n");
+            iter++;
+			Console.OUT.println("Distance: "+dist+" > "+epsilon+"\n");
                     
         }    
 
@@ -235,9 +253,18 @@ public class Solver
     public class NodeProb {
         val id: long;
         val prob: double;
+		val next: NodeProb;
+		
         def this(id: long, prob: double) {
             this.id = id;
             this.prob = prob;
+			this.next = null;
+        }
+		
+		def this(id: long, prob: double, next : NodeProb) {
+            this.id = id;
+            this.prob = prob;
+			this.next = next;
         }
 
     }

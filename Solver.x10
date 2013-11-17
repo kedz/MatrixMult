@@ -82,7 +82,7 @@ public class Solver
      
 		
 		Console.OUT.println("Not Got Here" );
-
+		/*
         for (i in sparseMatrix.range()) {
             val row = sparseMatrix(i);
 				if (i < size1) {
@@ -90,6 +90,27 @@ public class Solver
 				} else {
 					at (place2) matrixFragments()(i-size1) = row;
 				}
+        }
+		*/
+		val blockSize = (sparseMatrix.size/nthreads + 1);
+		finish for ( var i:long = 0 ; i < sparseMatrix.size ; i+= blockSize ) {
+            val iVal = i;
+			val end = (iVal + blockSize) >  sparseMatrix.size ? sparseMatrix.size : (iVal + blockSize);
+			async{	
+				for( var k:long = iVal ; k < end ; k ++   ){
+					val kVal = k;
+					val row = sparseMatrix(k);
+					if (k < size1) {
+						at (place1){
+							matrixFragments()(kVal) = row;
+						}
+					} else {
+						at (place2){
+							matrixFragments()(kVal-size1) = row;
+						}
+					}
+				}
+			}
         }
 
 		var iter:long = 0;

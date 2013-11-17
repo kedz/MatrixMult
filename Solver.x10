@@ -58,7 +58,7 @@ public class Solver
         val indexMap = 
                     PlaceLocalHandle.make[HashMap[Long, Long]](PlaceGroup.WORLD,
                         () =>(place1.id == here.id) ? makeIndexMap(0,size1) : makeIndexMap(size1, size2));
-
+		
 		/*
         val matrixFragments = 
                     PlaceLocalHandle.make[Rail[HashMap[Long, NodeProb]]](PlaceGroup.WORLD,
@@ -67,17 +67,19 @@ public class Solver
 		val matrixFragments = 
                     PlaceLocalHandle.make[Rail[ MatrixRow ] ](PlaceGroup.WORLD,
                         () =>(place1.id == here.id) ? makeFragment(size1) : makeFragment(size2));
-						
+		Console.OUT.println("Got Here" );	
+		
         var gSolutionVar:PlaceLocalHandle[Rail[Double]] = 
                     PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
                         () => solutions);
-        
+        Console.OUT.println("Also Got Here" );
 
         var gNewSolutionVar:PlaceLocalHandle[Rail[Double]] = 
                     PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
                         () => new Rail[Double](webGraph.size, (i:long) => 0.0));
      
-
+		
+		Console.OUT.println("Not Got Here" );
         for (i in sparseMatrix.range()) {
             val row = sparseMatrix(i);
             if (i < size1) {
@@ -195,9 +197,7 @@ public class Solver
 
     public def graphToMatrix(webGraph: Rail[WebNode]) : Rail[ MatrixRow ]  {
   
-        //var sparseMatrix: Rail[HashMap[Long, NodeProb]] = new  Rail[HashMap[Long, NodeProb]](webGraph.size, (i:long)=> new HashMap[Long, NodeProb]());
         var SMatrix: Rail[MatrixRow] = new  Rail[ MatrixRow ](webGraph.size, (i:long)=> new MatrixRow());
-		var prevNode: Rail[NodeProb] = new  Rail[ NodeProb ](webGraph.size, (i:long)=> null );
 	
         val totalLinks:double = webGraph.size;
 
@@ -211,9 +211,7 @@ public class Solver
 						
                 for (lwn in wn.links) {
 					val prob: double = 1.0 / numLinks;
-					val newNode = new NodeProb(wn.id-1, prob, prevNode(lwn.id-1));
-                    SMatrix(lwn.id-1).pages.put(wn.id-1, newNode);	
-					prevNode(lwn.id-1) = newNode;
+					val newNode = new NodeProb(wn.id-1, prob, SMatrix(lwn.id-1).last);
 					SMatrix(lwn.id-1).last = newNode;
                 }
                 
@@ -221,32 +219,14 @@ public class Solver
                 for (i in webGraph.range()) {
                     val prob: double = 1.0 / totalLinks;
 					val newNode = 
-					new NodeProb(wn.id-1, prob, prevNode( i ));
-                    SMatrix(i).pages.put(wn.id-1, newNode );   
-					prevNode( i ) = newNode;
+					new NodeProb(wn.id-1, prob, SMatrix( i ).last);
 					SMatrix( i ).last = newNode;
                 }
 
             }
 
         }
-		/*
-		//Link-List the nodes
-		for( i in SMatrix.range() ){
 		
-			var prev:NodeProb = null;
-			for( j in SMatrix.range() ){
-				
-				if( SMatrix(i).pages.containsKey(j) ){
-					//Console.OUT.println("Found one at index:( "+i+" , "+j+")\n");
-					var curr:NodeProb = SMatrix(i).pages.get(j).value;
-					curr.next = prev;
-					prev = curr;
-					SMatrix(i).num++;
-				}
-				SMatrix(i).last = prev;
-			}
-		}*/
         return SMatrix;
 
     }
@@ -289,22 +269,10 @@ public class Solver
 	
 	private class MatrixRow{
 		var last:NodeProb;
-		var num:long;
-		var pages:HashMap[Long, NodeProb];
 		
 		def this( ) {
             this.last = null;
-			this.num = 0;
-			this.pages = new HashMap[Long, NodeProb]() ;
         }
-		
-		public def setPages( row:HashMap[Long, NodeProb]  ){
-			this.pages = row;
-		}
-		
-		public def setLast( nd:NodeProb ){
-			this.last = nd;
-		}
 		
 	}
 

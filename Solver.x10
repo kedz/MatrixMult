@@ -39,7 +39,7 @@ public class Solver
     public def solve(webGraph: Rail[WebNode], dampingFactor: Double, epsilon:Double) : Rail[Double] {
         
         val n: double = webGraph.size;
-    	 
+    	
         var extra: long = 0;
 		val	nthreads = 4;
         
@@ -90,7 +90,8 @@ public class Solver
         }
 
 		var iter:long = 0;
-
+		val eps = epsilon / 10.0;
+		
         while(true) {
             val gSolution = gSolutionVar;
             val gNewSolution = gNewSolutionVar;
@@ -169,7 +170,9 @@ public class Solver
             Console.OUT.println("Old Solution vctr: "+gSolution());
 			Console.OUT.println("New Solution vctr: "+gNewSolution());
             
-            if (dist < epsilon) {
+            if (dist < eps ) {
+				break;
+				/*
                 Console.OUT.println("Distance: "+dist + " < " +epsilon);
                 Console.OUT.println("EXTRA ITERATION: "+extra);                
                 extra++;
@@ -185,6 +188,7 @@ public class Solver
 					
                     break;
                 }
+				*/
             }
             
             iter++;

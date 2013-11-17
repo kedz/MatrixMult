@@ -12,13 +12,15 @@ import x10.util.concurrent.AtomicLong;
 public class Solver
 {
     
-    public def makeFragment(size:long): Rail[HashMap[Long, NodeProb]] {
-        return new Rail[HashMap[Long, NodeProb]](size, (i:long)=> new HashMap[Long, NodeProb]());
-    }
-
-    public def makeSolutionFragment(size:long) : Rail[Double] {
+	public def makeSolutionFragment(size:long) : Rail[Double] {
         return new Rail[Double](size, (i:long) => 0.0);
     }
+	
+    public def makeFragment(size:long): Rail[ MatrixRow ] {
+       return new Rail[ MatrixRow ](size, (i:long)=> new MatrixRow());
+    }
+
+    
 
     public def makeIndexMap(offset:long, numItems:long):HashMap[Long, Long] {
         val map:HashMap[Long, Long] = new HashMap[Long, Long]();
@@ -52,15 +54,20 @@ public class Solver
         
         val place1 = PlaceGroup.WORLD(0);
         val place2 = PlaceGroup.WORLD(1);
-       
+		
         val indexMap = 
                     PlaceLocalHandle.make[HashMap[Long, Long]](PlaceGroup.WORLD,
                         () =>(place1.id == here.id) ? makeIndexMap(0,size1) : makeIndexMap(size1, size2));
 
+		/*
         val matrixFragments = 
                     PlaceLocalHandle.make[Rail[HashMap[Long, NodeProb]]](PlaceGroup.WORLD,
                         () =>(place1.id == here.id) ? makeFragment(size1) : makeFragment(size2));
-
+		*/
+		val matrixFragments = 
+                    PlaceLocalHandle.make[Rail[ MatrixRow ] ](PlaceGroup.WORLD,
+                        () =>(place1.id == here.id) ? makeFragment(size1) : makeFragment(size2));
+						
         var gSolutionVar:PlaceLocalHandle[Rail[Double]] = 
                     PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
                         () => solutions);
@@ -104,18 +111,26 @@ public class Solver
 									var blkUpdate:Rail[double] = new Rail[double]( chunkSize );
 									val otherPlace = (here.id == place1.id()) ? place2 : place1;
 									val oldPlace = here.id;
+									val beta = (1-dampingFactor) / n ;
+									var sum:double = 0.0;
 									
-									for (var i:long = start; i <  end ; i++) {
+									//Calculate the base array entry
+									for (val j in gSolution().range()) {
+											sum += beta*gSolution()(j) ;
+									}
+									
+									for (var i:long = start; i < end ; i++) {
 										var rowUpdate:double = 0.0;
+										var curr:NodeProb = matrixFragments()(i).last;
+										var total:double = sum;
 										
-										for (val j in gSolution().range()) {
-											var sum: double = (1-dampingFactor) / n;
-											if (matrixFragments()(i).containsKey(j)) {
-												sum += dampingFactor * matrixFragments()(i).get(j).value.prob;
-											}
-
-											rowUpdate += (gSolution()(j) * sum);
+										//Sparse matrix. Perform computation only when there are entries
+										while( curr != null  ){
+											total += gSolution()(curr.id)*dampingFactor*curr.prob;
+											curr = curr.next;
 										}
+										rowUpdate = total;
+										
 										val gIndex = indexMap().get(i).value;
 										val gRowUpdate = rowUpdate / 1.0;
 										blkUpdate( i%chunkSize ) = rowUpdate/1.0;
@@ -165,7 +180,6 @@ public class Solver
                         Console.OUT.println(gSolution()(i));
                     }
                     Console.OUT.println("\n\n--------\n\n");
-
 					
                     break;
                 }
@@ -178,39 +192,64 @@ public class Solver
 
         return gSolutionVar();
     }
-    
 
-    public def graphToMatrix(webGraph: Rail[WebNode]) : Rail[HashMap[Long, NodeProb]] {
+    public def graphToMatrix(webGraph: Rail[WebNode]) : Rail[ MatrixRow ]  {
   
-        var sparseMatrix: Rail[HashMap[Long, NodeProb]] = new  Rail[HashMap[Long, NodeProb]](webGraph.size, (i:long)=> new HashMap[Long, NodeProb]());
+        //var sparseMatrix: Rail[HashMap[Long, NodeProb]] = new  Rail[HashMap[Long, NodeProb]](webGraph.size, (i:long)=> new HashMap[Long, NodeProb]());
+        var SMatrix: Rail[MatrixRow] = new  Rail[ MatrixRow ](webGraph.size, (i:long)=> new MatrixRow());
+		var prevNode: Rail[NodeProb] = new  Rail[ NodeProb ](webGraph.size, (i:long)=> null );
+	
         val totalLinks:double = webGraph.size;
 
         Console.OUT.println("Graph size");
         Console.OUT.println(webGraph.size);
         for (wn in webGraph) {
+			
             numLinks: double = wn.links.size();
-      
-            if (numLinks >0) {
+            
+			if (numLinks >0) {
+						
                 for (lwn in wn.links) {
-                    val prob: double = 1.0 / numLinks;        
-                    sparseMatrix(lwn.id-1).put(wn.id-1, new NodeProb(wn.id-1, prob));        
+					val prob: double = 1.0 / numLinks;
+					val newNode = new NodeProb(wn.id-1, prob, prevNode(lwn.id-1));
+                    SMatrix(lwn.id-1).pages.put(wn.id-1, newNode);	
+					prevNode(lwn.id-1) = newNode;
+					SMatrix(lwn.id-1).last = newNode;
                 }
                 
             } else {
                 for (i in webGraph.range()) {
-                    val prob: double = 1.0 / totalLinks;        
-                    sparseMatrix(i).put(wn.id-1, new NodeProb(wn.id-1, prob));        
+                    val prob: double = 1.0 / totalLinks;
+					val newNode = 
+					new NodeProb(wn.id-1, prob, prevNode( i ));
+                    SMatrix(i).pages.put(wn.id-1, newNode );   
+					prevNode( i ) = newNode;
+					SMatrix( i ).last = newNode;
                 }
 
             }
 
         }
-    
-    
-        return sparseMatrix;
+		/*
+		//Link-List the nodes
+		for( i in SMatrix.range() ){
+		
+			var prev:NodeProb = null;
+			for( j in SMatrix.range() ){
+				
+				if( SMatrix(i).pages.containsKey(j) ){
+					//Console.OUT.println("Found one at index:( "+i+" , "+j+")\n");
+					var curr:NodeProb = SMatrix(i).pages.get(j).value;
+					curr.next = prev;
+					prev = curr;
+					SMatrix(i).num++;
+				}
+				SMatrix(i).last = prev;
+			}
+		}*/
+        return SMatrix;
 
     }
-
 
     public def prettyFragmentPrint(sparseMatrix: Rail[HashMap[Long, NodeProb]], n:long) {
 
@@ -230,7 +269,6 @@ public class Solver
         }
     }
 
-
     public def prettyPrint(sparseMatrix: Rail[HashMap[Long, NodeProb]]) {
 
         for (val i in sparseMatrix.range()) {
@@ -248,12 +286,32 @@ public class Solver
 
 
     }
-
+	
+	private class MatrixRow{
+		var last:NodeProb;
+		var num:long;
+		var pages:HashMap[Long, NodeProb];
+		
+		def this( ) {
+            this.last = null;
+			this.num = 0;
+			this.pages = new HashMap[Long, NodeProb]() ;
+        }
+		
+		public def setPages( row:HashMap[Long, NodeProb]  ){
+			this.pages = row;
+		}
+		
+		public def setLast( nd:NodeProb ){
+			this.last = nd;
+		}
+		
+	}
 
     public class NodeProb {
         val id: long;
         val prob: double;
-		val next: NodeProb;
+		var next: NodeProb;
 		
         def this(id: long, prob: double) {
             this.id = id;

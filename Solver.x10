@@ -75,9 +75,10 @@ public class Solver
                         () => solutions);
         Console.OUT.println("Also Got Here" );
 
+		val newSolutions:Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>0.0 );
         var gNewSolutionVar:PlaceLocalHandle[Rail[Double]] = 
                     PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
-                        () => new Rail[Double](webGraph.size, (i:long) => 0.0));
+                        () => newSolutions );
      
 		
 		Console.OUT.println("Not Got Here" );

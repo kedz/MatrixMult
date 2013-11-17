@@ -2,6 +2,7 @@ import x10.util.Timer;
 import x10.util.ArrayList;
 import x10.util.HashMap;
 import x10.util.concurrent.AtomicLong;
+import x10.lang.System;
 
 /**
  * This is the class that provides the solve() method.
@@ -19,8 +20,6 @@ public class Solver
     public def makeFragment(size:long): Rail[ MatrixRow ] {
        return new Rail[ MatrixRow ](size, (i:long)=> new MatrixRow());
     }
-
-    
 
     public def makeIndexMap(offset:long, numItems:long):HashMap[Long, Long] {
         val map:HashMap[Long, Long] = new HashMap[Long, Long]();
@@ -41,7 +40,9 @@ public class Solver
         val n: double = webGraph.size;
     	
         var extra: long = 0;
-		val	nthreads = 4;
+		
+		val m = System.getenv();
+		val nthreads = m.containsKey("X10_NTHREADS") ? (x10.lang.Runtime.NTHREADS)*3/2 : 8;
         
         val sparseMatrix = graphToMatrix(webGraph);
         val solutions:Rail[Double] = new Rail[Double](webGraph.size, (i:Long)=>1.0/webGraph.size);
@@ -80,13 +81,14 @@ public class Solver
      
 		
 		Console.OUT.println("Not Got Here" );
+
         for (i in sparseMatrix.range()) {
             val row = sparseMatrix(i);
-            if (i < size1) {
-                at (place1) matrixFragments()(i) = row;
-            } else {
-                at (place2) matrixFragments()(i-size1) = row;
-            }
+				if (i < size1) {
+					at (place1) matrixFragments()(i) = row;
+				} else {
+					at (place2) matrixFragments()(i-size1) = row;
+				}
         }
 
 		var iter:long = 0;
@@ -139,7 +141,7 @@ public class Solver
 										blkUpdate( i%chunkSize ) = rowUpdate/1.0;
 										gNewSolution()(gIndex) = gRowUpdate;
 										
-										at (here) gNewSolution()(gIndex) = gRowUpdate;
+										gNewSolution()(gIndex) = gRowUpdate;
 									
 									}
 									
@@ -172,23 +174,6 @@ public class Solver
             
             if (dist < eps ) {
 				break;
-				/*
-                Console.OUT.println("Distance: "+dist + " < " +epsilon);
-                Console.OUT.println("EXTRA ITERATION: "+extra);                
-                extra++;
-
-                if (extra >= 100) {
-
-
-                    Console.OUT.println("Printing vector: \n\n");
-                    for (val i in gSolution().range()) {
-                        Console.OUT.println(gSolution()(i));
-                    }
-                    Console.OUT.println("\n\n--------\n\n");
-					
-                    break;
-                }
-				*/
             }
             
             iter++;

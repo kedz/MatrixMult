@@ -1,0 +1,35 @@
+Parallel Programmaing - COMS W4130 Fall '13
+
+Team Members:
+    Peter Njenga pwn2107
+    Chris Kedzie crk2130
+
+MiniProject 3 Writeup:
+
+In order to efficiently multiply a matrix with a vector, we took advantage of parallelization, distributed processors, and certain mathematical niceties of the specific problem.
+First we convert the input webGraph into a sparse matrix.
+Then, half of the rows given to location 1 and the other half to location 2.
+We call these halves matrix fragments.
+We maintain two complete vectors at both locations -- the old solution vector and the new solution vector.
+
+To compute the new solution, we assign each available thread its own chunk of the matrix fragment.
+For example if we had 16 rows in the fragment and 4 threads, each thread would work on 4 contiguous rows in the fragment.
+When a thread starts on a chunk, it only has to iterate across all n columns once to compute (1-dampingFactor)/n*solution_i for the i columns.
+Then for each row we only need to perform a handful of multiplications (since it is a sparse matrix) and then add them to the previous calculation.
+When a thread finishes a row, it places the new solution component in the new solution vector locally.
+Only when the thread as finished a whole chunk do we copy over the updates to the other location.
+Additionally, we sum the (old_dist - new_dist)^2 values for each row as we finish it so that when we need to compute the distance at the end of an iteration, we only need to get the other places summation, and then add and take the square root, avoiding another n sized iteration. 
+
+Rather than initialize new solution vectors of length n at each iteration, we simply swap the PlaceLocalHandle objects so that the new becomes old and the old becomes new.
+
+Except for the sum of squares which is an AtomicDouble, our design ensures that each thread is working on it's own region in the array or vector and so does not have to take extra measure to deal with race conditions. 
+
+At this point it seems like most of our time is spent constructing the matrix from the graph.
+We did not parallelize this aspect of our project, but with more time this would be our next step.
+On the clic lab machines (we could not get spicerack to work with multiple places) we observed a 35x speedup over the base line.
+Our naive serial implementation at 70K took 2 1/2 hours for each run.
+
+While this generic architecture was put in place directly after naively solving the problem, we made several iterative improvements.
+Initially we had threads globally updating the solution after finishing every row but this was slower than doing a large chunk at once.
+We also initially naively iterated through all columns for all rows to calculate the update -- even with distributed/parallel computing this took much much longer than the baseline.  
+

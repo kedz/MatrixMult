@@ -224,12 +224,10 @@ public class Solver {
             }
             
             // Update the distance here with the distance there.
-            //val thisDist = gDist().get();
             val thisPlace = here;
             at (here.next()) {
                 val otherDist = gDist().get();
                 at (thisPlace) gDist().addAndGet(otherDist);
-                //gDist().getAndAdd(thisDist);
             }
                     
             // swap references to the old and new solutions
@@ -239,15 +237,14 @@ public class Solver {
             
             //val dist = distance(gSolution(), gNewSolution());
             val dist = Math.sqrt(gDist().get());
-            Console.OUT.println("Old Solution vctr: "+gSolution());
-            Console.OUT.println("New Solution vctr: "+gNewSolution());
+            //Console.OUT.println("Old Solution vctr: "+gSolution());
+            //Console.OUT.println("New Solution vctr: "+gNewSolution());
             
             if (dist < eps ) {
                 break;
             }
             
-            //Console.OUT.println("ParDist: "+Math.sqrt(gDist().get()));
-            Console.OUT.println("Distance: "+dist+" > "+epsilon+"\n");
+            //Console.OUT.println("Distance: "+dist+" > "+epsilon+"\n");
         }    
 
         return gSolutionVar();
@@ -358,7 +355,7 @@ public class Solver {
 
     }
 
-
+    // Not used in current version - distance is calculated in tandem with new solutions.
     public def distance(v1:Rail[Double], v2:Rail[Double]) : double {
 
         var sum: double = 0.0;

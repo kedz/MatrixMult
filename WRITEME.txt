@@ -16,11 +16,11 @@ To compute the new solution, we assign each available thread its own chunk of th
 For example if we had 16 rows in the fragment and 4 threads, each thread would work on 4 contiguous rows in the fragment.
 When a thread starts on a chunk, it only has to iterate across all n columns once to compute (1-dampingFactor)/n*solution_i for the i columns.
 Then for each row we only need to perform a handful of multiplications (since it is a sparse matrix) and then add them to the previous calculation. 
-TWe iterate through a linked list of webnodes updating the solution vector accordingly. Since the number of pages linking into a 
+We iterate through a linked list of webnodes updating the solution vector accordingly. Since the number of pages linking into a 
 webpage is small compared to the size of the web, the number of iterations is much less that would have otherwise been performed using traditional matrix
 multiplication. When a thread finishes a row, it places the new solution component in the new solution vector locally.
-Only when the thread as finished a whole chunk do we copy over the updates to the other location.
-Additionally, we sum the (old_dist - new_dist)^2 values for each row as we finish it so that when we need to compute the distance at the end of an iteration, we only need to get the other places summation, and then add and take the square root, avoiding another n sized iteration. 
+Only when the thread has finished a whole chunk do we copy over the updates to the other location.
+Additionally, we sum the (old_sol - new_sol)^2 values for each row as we finish it so that when we need to compute the distance at the end of an iteration, we only need to get the other places summation, and then add and take the square root, avoiding another n sized iteration. 
 
 Rather than initialize new solution vectors of length n at each iteration, we simply swap the PlaceLocalHandle objects so that the new becomes old and the old becomes new.
 

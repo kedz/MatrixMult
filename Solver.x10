@@ -62,6 +62,12 @@ public class Solver {
         
         Console.OUT.println("Number of pages: "+webGraph.size);
         Console.OUT.println("Damping Factor: "+dampingFactor);
+        Console.OUT.println("Number of Threads: "+Runtime.NTHREADS);
+        if (PlaceGroup.WORLD.numPlaces() != 2) {
+            Console.OUT.println("FATAL ERROR: Solver must have two places to run. Currently there are "+
+                PlaceGroup.WORLD.numPlaces() + " place(s)");
+            throw new Error("X10_NPLACES must be set to 2.");
+        }
         
         val n: double = webGraph.size;
         val beta = (1.0-dampingFactor) / n ;
@@ -101,7 +107,6 @@ public class Solver {
             PlaceLocalHandle.make[Rail[Double]](PlaceGroup.WORLD,
               () => solutions);
       
-        Console.OUT.println("Also Got Here" );
 
         // Plh to the global new solution vector. After each iteration, this vector is identical
         // at both locations.
@@ -145,7 +150,6 @@ public class Solver {
 
             val gSolution = gSolutionVar;
             val gNewSolution = gNewSolutionVar;
-            val iterV = iter;
 
             // At each place, give each thread a chunk of rows from the matrix to work on. 
             finish {
@@ -242,7 +246,6 @@ public class Solver {
                 break;
             }
             
-            iter++;
             //Console.OUT.println("ParDist: "+Math.sqrt(gDist().get()));
             Console.OUT.println("Distance: "+dist+" > "+epsilon+"\n");
         }    

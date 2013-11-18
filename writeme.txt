@@ -1,0 +1,4 @@
+
+
+
+In order to efficiently multiply a matrix with a vector, we took advantage of parallelization, distributed processors, and certain mathematical niceties of the specific problem.

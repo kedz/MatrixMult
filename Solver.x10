@@ -66,8 +66,6 @@ public class Solver {
         val n: double = webGraph.size;
         val beta = (1.0-dampingFactor) / n ;
     
-        var extra: long = 0;
-       
         /** INITIALIZATION */
         
         // Get the runtimes number of threads.
@@ -166,9 +164,10 @@ public class Solver {
                             finish for( var k:long = 0; k < fragSize ; k+= chunkSize) {
                                 val start = k;
                                 val end = (start + chunkSize) > fragSize ? fragSize : (start + chunkSize); 
-
+                                
                                 async{
 
+                                    var locDist: double = 0.0;
                                     
                                     val blkUpdate:Rail[double] = new Rail[double](chunkSize);
                                     val otherPlace = (here.id == place1.id()) ? place2 : place1;
@@ -196,19 +195,21 @@ public class Solver {
                                         val gIndex = indexMap().get(i).value;
                                         blkUpdate(i%chunkSize) = total;
                                         gNewSolution()(gIndex) = total;
-                                        gDist().getAndAdd(Math.pow(total-gSolution()(gIndex), 2));
+                                        locDist += Math.pow(total-gSolution()(gIndex), 2);
 
                                     }                                   
+                                        
+                                    //val distUpdate = locDist.get();
+                                    gDist().addAndGet(locDist);
 
                                     val gstart = indexMap().get(start).value;
                                     val gend = indexMap().get(end-1).value;
 
-                                    at ( otherPlace )
+                                    at ( otherPlace ) {
                                         for( var i:long = gstart ; i <= gend ; i++ ){
                                             gNewSolution()( i ) = blkUpdate(i-gstart);
-                                            gDist().getAndAdd(Math.pow(gNewSolution()(i) - gSolution()(i), 2));
                                         }
-
+                                    }
                                 }
                             }
                             
@@ -218,6 +219,15 @@ public class Solver {
                 }
             }
             
+            // Update the distance here with the distance there.
+            //val thisDist = gDist().get();
+            val thisPlace = here;
+            at (here.next()) {
+                val otherDist = gDist().get();
+                at (thisPlace) gDist().addAndGet(otherDist);
+                //gDist().getAndAdd(thisDist);
+            }
+                    
             // swap references to the old and new solutions
             val swap = gSolutionVar;
             gSolutionVar = gNewSolutionVar;
